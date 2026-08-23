@@ -1,0 +1,33 @@
+# Project planning docs (kept locally, not versioned)
+Bot_Detection_Research_Dossier.docx
+Sentiment_Bot_Detection_Proposal.docx
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.ipynb_checkpoints/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Data (large / downloaded, not versioned)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Results (regeneratable outputs)
+results/figures/*
+results/tables/*
+!results/figures/.gitkeep
+!results/tables/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
