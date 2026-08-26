@@ -46,7 +46,7 @@ def _label_for_dir(dirname: str) -> int:
     return 0 if "genuine" in dirname.lower() else 1
 
 
-def load_cresci2017(raw_dir: Path = config.RAW_DATA_DIR) -> tuple[pd.DataFrame, pd.DataFrame]:
+def load_cresci2017(raw_dir: Path | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Load every account subset found under raw_dir.
 
     Returns (users_df, tweets_df). Both carry a shared `account_key` column
@@ -54,7 +54,7 @@ def load_cresci2017(raw_dir: Path = config.RAW_DATA_DIR) -> tuple[pd.DataFrame, 
     users_df additionally carries `label` (0=human, 1=bot) and
     `source_subset` (the originating folder name).
     """
-    raw_dir = Path(raw_dir)
+    raw_dir = Path(raw_dir) if raw_dir is not None else Path(config.RAW_DATA_DIR)
     subset_dirs = sorted(p for p in raw_dir.iterdir() if p.is_dir()) if raw_dir.exists() else []
     if not subset_dirs:
         raise FileNotFoundError(

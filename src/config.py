@@ -19,6 +19,10 @@ EXTREME_SENTIMENT_THRESHOLD = 0.6
 # changing the variance/consistency signal. Set to None to score every tweet.
 MAX_TWEETS_PER_ACCOUNT_FOR_SENTIMENT = 200
 
+# Thresholds used to classify the headline result (Section 8 of the dossier)
+SIGNIFICANCE_ALPHA = 0.05
+F1_IMPROVEMENT_THRESHOLD = 0.03  # "3%+" improvement, per the dossier's Outcome A
+
 # Feature Set A (baseline)
 METADATA_FEATURES = [
     "followers_count",

@@ -12,8 +12,13 @@ from __future__ import annotations
 
 import logging
 
+import matplotlib
+
+matplotlib.use("Agg")  # headless: never try to open a GUI window
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 
 from . import config, evaluation, features, modeling, preprocessing
@@ -23,7 +28,20 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 
-def run_pipeline(raw_dir=config.RAW_DATA_DIR, use_smote: bool = True) -> dict:
+def _save_confusion_matrices(experiment_results, out_dir) -> None:
+    for r in experiment_results:
+        fig, ax = plt.subplots(figsize=(4, 4))
+        ConfusionMatrixDisplay.from_predictions(
+            r.y_test, r.y_pred, display_labels=["human", "bot"], ax=ax, colorbar=False
+        )
+        ax.set_title(f"{r.model_name} — {r.feature_set}")
+        fig.tight_layout()
+        fig.savefig(out_dir / f"confusion_matrix_{r.feature_set}_{r.model_name}.png", dpi=150)
+        plt.close(fig)
+
+
+def run_pipeline(raw_dir=None, use_smote: bool = True) -> dict:
+    raw_dir = raw_dir if raw_dir is not None else config.RAW_DATA_DIR
     config.RESULTS_TABLES_DIR.mkdir(parents=True, exist_ok=True)
     config.RESULTS_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -60,6 +78,9 @@ def run_pipeline(raw_dir=config.RAW_DATA_DIR, use_smote: bool = True) -> dict:
     summary_path = config.RESULTS_TABLES_DIR / "experiment_summary.csv"
     summary.to_csv(summary_path, index=False)
     logger.info("Saved experiment summary to %s", summary_path)
+
+    _save_confusion_matrices(results_a + results_b, config.RESULTS_FIGURES_DIR)
+    logger.info("Saved confusion matrices to %s", config.RESULTS_FIGURES_DIR)
 
     # McNemar's test per model: metadata-only vs metadata+sentiment (Section 7.4).
     # Valid because both feature sets share the same held-out test set.

@@ -9,7 +9,7 @@ import random
 import pandas as pd
 import pytest
 
-from src import pipeline
+from src import pipeline, report
 
 POSITIVE_PHRASES = [
     "I love this so much, best day ever!",
@@ -87,3 +87,27 @@ def test_pipeline_runs_end_to_end(synthetic_raw_dir, tmp_path, monkeypatch):
     assert (pipeline.config.RESULTS_TABLES_DIR / "experiment_summary.csv").exists()
     assert (pipeline.config.RESULTS_TABLES_DIR / "mcnemar_significance.csv").exists()
     assert (pipeline.config.RESULTS_TABLES_DIR / "feature_importance.csv").exists()
+
+    confusion_matrices = list(pipeline.config.RESULTS_FIGURES_DIR.glob("confusion_matrix_*.png"))
+    assert len(confusion_matrices) == 6
+
+
+def test_report_generates_from_pipeline_output(synthetic_raw_dir, tmp_path, monkeypatch):
+    monkeypatch.setattr(pipeline.config, "RESULTS_TABLES_DIR", tmp_path / "results_tables")
+    monkeypatch.setattr(pipeline.config, "RESULTS_FIGURES_DIR", tmp_path / "results_figures")
+
+    pipeline.run_pipeline(raw_dir=synthetic_raw_dir, use_smote=False)
+    result = report.generate_report()
+
+    assert result["outcome"] in {"A", "B", "C"}
+    assert len(result["classified"]) == 3
+    assert set(result["classified"]["verdict"]).issubset(
+        {"significant_improvement", "significant_but_small", "improvement_not_significant", "no_improvement"}
+    )
+
+    report_path = report.config.RESULTS_TABLES_DIR / "interpretation_report.md"
+    assert report_path.exists()
+    assert report.OUTCOME_LABELS[result["outcome"]] in report_path.read_text(encoding="utf-8")
+
+    assert (report.config.RESULTS_FIGURES_DIR / "f1_comparison.png").exists()
+    assert (report.config.RESULTS_FIGURES_DIR / "feature_importance.png").exists()
