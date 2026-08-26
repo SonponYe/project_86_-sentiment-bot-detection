@@ -12,10 +12,10 @@ documents (`Sentiment_Bot_Detection_Proposal.docx`,
 
 ## Status
 
-Pipeline code is written and passes a smoke test on synthetic data. It has
-**not** been run on the real Cresci-2017 dataset yet — that dataset isn't
-downloaded. Nothing below the "Run the pipeline" step has actually executed
-against real data.
+Pipeline code is written and passes a smoke test on synthetic data. The real
+Cresci-2017 dataset has been downloaded (as zips under `cresci-2017.csv/`,
+gitignored) but not yet run through the pipeline — that's the next step, via
+Colab (see below).
 
 ## Repository layout
 
@@ -57,40 +57,67 @@ imbalanced-learn, statsmodels, matplotlib, seaborn, jupyter, pytest.
 > `pip install` and large package imports noticeably slower than usual
 > (cloud-sync file interception). This is expected, not a broken install.
 
-## Getting the dataset
+## The dataset
 
-This project uses **Cresci-2017** (12,736 accounts, ~6.6M tweets; genuine
-accounts + traditional/social spambots), the benchmark used by every paper
-in the literature review. Download it from the Bot Repository (Indiana
-University) and extract each class as its own subfolder under `data/raw/`:
+This project uses **Cresci-2017** (12,736 accounts, ~6.6M tweets), the
+benchmark used by every paper in the literature review. It's downloaded
+locally as zips under `cresci-2017.csv/datasets_full.csv/` (gitignored —
+research-only license). Each subset's zip already contains the exact
+`users.csv` / `tweets.csv` layout the loader expects:
 
 ```
-data/raw/
+data/raw/                          <- extract zips to here
   genuine_accounts.csv/
     users.csv
     tweets.csv
-  social_spambots_1.csv/
+  social_spambots_1.csv/ ... _3.csv/
     users.csv
     tweets.csv
-  social_spambots_2.csv/
+  traditional_spambots_1.csv/ ... _4.csv/
     users.csv
     tweets.csv
-  social_spambots_3.csv/
-    users.csv
-    tweets.csv
-  traditional_spambots_1.csv/
-    users.csv
-    tweets.csv
-  ... (additional traditional_spambots_N.csv subsets if you use them)
 ```
+
+We use genuine_accounts vs. social_spambots_1-3 + traditional_spambots_1-4
+(matching the proposal's stated "3 bot types" composition).
+`fake_followers.csv.zip` and `crowdflower_results.csv.zip` are also in the
+download but not used: fake_followers is an optional extra bot class for a
+follow-up experiment, and crowdflower_results isn't an accounts/tweets
+dataset at all (it's crowdsourced label-verification data).
 
 The loader (`src/data_loader.py`) labels any subfolder containing "genuine"
 as human (0) and everything else as bot (1); it's tolerant of `id` vs.
 `user_id` column naming.
 
-## Run the pipeline
+`Twibot_20.json` (secondary/comparison dataset) and `botometer-feedback-2019/`
+(supplementary) are also on disk (gitignored) but use different schemas the
+current loader doesn't support — they're optional later steps, not needed
+for the primary experiment.
 
-Once `data/raw/` is populated:
+## Run the pipeline — on Google Colab (recommended)
+
+This machine's project folder lives inside OneDrive, which makes disk I/O
+(package installs, large file reads) noticeably slower than normal. Rather
+than fight that locally, run the real dataset through
+[`notebooks/run_pipeline_colab.ipynb`](notebooks/run_pipeline_colab.ipynb):
+
+1. Upload `cresci-2017.csv/datasets_full.csv/` (the `.zip` files) to Google
+   Drive, e.g. `My Drive/cresci-2017/datasets_full.csv/`.
+2. Open the notebook in Colab (upload it, or open it from GitHub once pushed).
+3. Run the cells top to bottom: mount Drive, clone the repo, install the
+   extra dependencies, extract the zips into `data/raw/`, run the pipeline,
+   inspect results, copy results back to Drive.
+
+Note: Colab's fast disk doesn't fully offset the sentiment-scoring cost —
+VADER and TextBlob run once per tweet and are CPU-bound. By default,
+`build_sentiment_features` scores only the most recent 200 tweets per
+account (`config.MAX_TWEETS_PER_ACCOUNT_FOR_SENTIMENT`), which keeps runtime
+to minutes instead of hours without materially changing the variance signal.
+Set that to `None` for a full, uncapped run once the pipeline is validated.
+
+## Run the pipeline — locally
+
+Once `data/raw/` is populated (see above):
 
 ```powershell
 .\venv\Scripts\python.exe -m src.pipeline

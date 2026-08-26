@@ -51,18 +51,32 @@ def _subjectivity_scores(texts: list[str]) -> np.ndarray:
     return np.array([TextBlob(t).sentiment.subjectivity for t in texts])
 
 
-def build_sentiment_features(tweets_df: pd.DataFrame, text_col: str = "text") -> pd.DataFrame:
+def build_sentiment_features(
+    tweets_df: pd.DataFrame,
+    text_col: str = "text",
+    max_tweets_per_account: int | None = config.MAX_TWEETS_PER_ACCOUNT_FOR_SENTIMENT,
+) -> pd.DataFrame:
     """Per-account sentiment features computed from each account's tweet history.
 
     mean_polarity / polarity_std use VADER's compound score (built for social
     media text: slang, caps, emoji). subjectivity is TextBlob's 0 (factual) to
     1 (opinionated) score. polarity_std is the key discriminating feature per
     Dickerson et al. (2014): bots show low sentiment variance, humans high.
+
+    If max_tweets_per_account is set, only the most recent N tweets (by
+    created_at, when available) are scored per account, to keep runtime
+    tractable on large corpora.
     """
     records = []
     threshold = config.EXTREME_SENTIMENT_THRESHOLD
 
     for account_key, group in tweets_df.groupby("account_key"):
+        if max_tweets_per_account is not None and len(group) > max_tweets_per_account:
+            if "created_at" in group.columns:
+                order = pd.to_datetime(group["created_at"], errors="coerce", utc=True)
+                group = group.loc[order.sort_values(ascending=False).index]
+            group = group.head(max_tweets_per_account)
+
         texts = group[text_col].dropna().astype(str).tolist()
         if not texts:
             continue
