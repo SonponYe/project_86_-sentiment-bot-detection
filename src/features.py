@@ -6,6 +6,7 @@ import logging
 import numpy as np
 import pandas as pd
 from textblob import TextBlob
+from tqdm.auto import tqdm
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 from . import config
@@ -70,7 +71,10 @@ def build_sentiment_features(
     records = []
     threshold = config.EXTREME_SENTIMENT_THRESHOLD
 
-    for account_key, group in tweets_df.groupby("account_key"):
+    grouped = tweets_df.groupby("account_key")
+    for account_key, group in tqdm(
+        grouped, total=grouped.ngroups, desc="Scoring sentiment per account", unit="account"
+    ):
         if max_tweets_per_account is not None and len(group) > max_tweets_per_account:
             if "created_at" in group.columns:
                 order = pd.to_datetime(group["created_at"], errors="coerce", utc=True)

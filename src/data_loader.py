@@ -25,6 +25,7 @@ import logging
 from pathlib import Path
 
 import pandas as pd
+from tqdm.auto import tqdm
 
 from . import config
 
@@ -66,7 +67,9 @@ def load_cresci2017(raw_dir: Path | None = None) -> tuple[pd.DataFrame, pd.DataF
 
     all_users = []
     all_tweets = []
-    for subset_dir in subset_dirs:
+    progress = tqdm(subset_dirs, desc="Loading Cresci-2017 subsets", unit="subset")
+    for subset_dir in progress:
+        progress.set_postfix_str(subset_dir.name)
         users_path = subset_dir / "users.csv"
         tweets_path = subset_dir / "tweets.csv"
         if not users_path.exists() or not tweets_path.exists():

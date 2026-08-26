@@ -8,6 +8,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.svm import SVC
+from tqdm.auto import tqdm
 
 from . import config
 
@@ -48,7 +49,10 @@ def run_experiments(
     y_test_arr = np.asarray(y_test)
 
     results = []
-    for name, model in get_classifiers(random_state).items():
+    classifiers = get_classifiers(random_state)
+    progress = tqdm(classifiers.items(), desc=f"Training ({feature_set_name})", unit="model")
+    for name, model in progress:
+        progress.set_postfix_str(name)
         cv_scores = cross_val_score(model, X_train, y_train, cv=cv, scoring="f1")
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
