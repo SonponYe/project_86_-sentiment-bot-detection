@@ -20,6 +20,11 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+# Raw dataset downloads dropped at repo root
+cresci-2017.csv/
+Twibot_20.json
+botometer-feedback-2019/
+
 # Results (regeneratable outputs)
 results/figures/*
 results/tables/*
