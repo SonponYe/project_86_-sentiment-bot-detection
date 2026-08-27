@@ -34,32 +34,35 @@ METRIC_COLUMNS = ["accuracy", "precision", "recall", "f1", "roc_auc"]
 KEY_SENTIMENT_FEATURES = {"polarity_std", "pct_extreme"}
 
 OUTCOME_LABELS = {
-    "A": "Outcome A - sentiment features significantly improve detection",
-    "B": "Outcome B - marginal or mixed improvement",
-    "C": "Outcome C - sentiment features do not help (null result)",
+    "A": "Outcome A - sentiment consistency significantly distinguishes AI-operated from human-operated accounts",
+    "B": "Outcome B - marginal or mixed evidence for the sentiment-consistency signal",
+    "C": "Outcome C - sentiment consistency does not help distinguish AI-operated accounts (null result)",
 }
 
 NARRATIVES = {
     "A": (
         "Sentiment-based features - particularly sentiment variance and proportion of "
-        "extreme-sentiment posts - provide statistically significant improvements to bot "
-        "detection accuracy when combined with traditional metadata features. This supports "
-        "the hypothesis that bots exhibit less natural emotional variability than human users."
+        "extreme-sentiment posts - provide statistically significant improvements when "
+        "distinguishing AI-operated accounts from human-operated ones, on top of traditional "
+        "metadata features. This supports the hypothesis that AI-operated accounts exhibit "
+        "less natural emotional variability (higher sentiment consistency) than human-operated "
+        "accounts."
     ),
     "B": (
         "Results are mixed: sentiment features improved {improved_models} performance but not "
-        "{unimproved_models}. This suggests that the relationship between sentiment and bot "
-        "behaviour is non-linear, favouring tree-based and kernel-based methods over linear "
-        "ones. Future work should explore sentiment feature engineering that linearises these "
-        "relationships."
+        "{unimproved_models}. This suggests that the relationship between sentiment consistency "
+        "and account-operation type is non-linear, favouring tree-based and kernel-based methods "
+        "over linear ones. Future work should explore sentiment feature engineering that "
+        "linearises these relationships."
     ),
     "C": (
         "Contrary to prior findings by Dickerson et al. (2014), this study found no "
         "statistically significant improvement from adding sentiment features on the "
-        "Cresci-2017 dataset using traditional ML classifiers. One hypothesis is that the "
-        "social spambot subcategory in Cresci-2017 has been specifically engineered to mimic "
-        "natural human sentiment, rendering sentiment features ineffective against this class "
-        "of bots - pointing to an arms race between bot sophistication and detection methods."
+        "Cresci-2017 dataset (used here as a proxy for human- vs. AI-operated accounts) using "
+        "traditional ML classifiers. One hypothesis is that the social spambot subcategory in "
+        "Cresci-2017 has been specifically engineered to mimic natural human sentiment, "
+        "rendering sentiment features ineffective against this class of AI-operated accounts - "
+        "pointing to an arms race between automation sophistication and detection methods."
     ),
 }
 
@@ -136,7 +139,8 @@ def feature_importance_note(importance: pd.DataFrame, top_n: int = 5) -> str:
         return (
             f"{', '.join(hits)} rank in the top {top_n} features by Random Forest importance - "
             "per the dossier, this is a major finding: it confirms that emotional variability, "
-            "not just average sentiment, is what separates bots from humans."
+            "not just average sentiment, is what separates AI-operated accounts from "
+            "human-operated ones."
         )
     return (
         f"Neither polarity_std nor pct_extreme made the top {top_n} features by importance; "

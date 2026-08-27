@@ -1,14 +1,41 @@
-# Sentiment-Assisted Bot Detection on Social Media
+# Sentiment Consistency as a Signal for Detecting AI-Operated Accounts
 
-Research question: does adding sentiment-based features (polarity, variance,
-consistency) to a machine learning classifier meaningfully improve bot
-detection accuracy, compared to using account metadata alone?
+Research question: does sentiment consistency (polarity, variance, extremity
+across an account's post history) meaningfully distinguish human-operated
+accounts from AI-operated ones, on top of account metadata alone?
+
+This is a **v3 reframe** of the original "bot detection" framing (see
+`## Framing history` below) — the underlying pipeline, features, models, and
+dataset are unchanged; only the research question and terminology shifted
+from "bot vs. human" to "AI-operated vs. human-operated," which better
+matches 2026's landscape of LLM-agent-run accounts.
 
 Course: Computational Models for Social Media Mining. Full background,
-literature review, and evaluation plan live in the two local planning
-documents (`Sentiment_Bot_Detection_Proposal.docx`,
-`Bot_Detection_Research_Dossier.docx`) — kept out of version control via
+literature review, and evaluation plan live in the local planning documents
+(`Sentiment_Bot_Detection_Proposal.docx`, `Bot_Detection_Research_Dossier.docx`,
+`Bot_Detection_Research_Dossier_v3.docx`) — kept out of version control via
 `.gitignore` since they're personal planning material, not project code.
+
+## Framing history
+
+- **v1/v2**: "Sentiment-Assisted Bot Detection" — binary bot-vs-human framing.
+- **v3** (current): "Sentiment Consistency as a Signal for Detecting
+  AI-Operated Accounts" — reframed because "bot" now conflates malicious spam
+  accounts with legitimate AI agents, and LLM-generated text defeats
+  metadata-only detection. The new framing is regulatory-relevant (EU AI Act
+  disclosure requirements) rather than purely adversarial.
+- Operational definitions used from v3 onward: **human-operated account**
+  (posting driven by real-time individual human decisions), **AI-operated
+  account** (content substantially generated/managed by an LLM-based system,
+  disclosed or not), **sentiment consistency** (how stable an account's
+  emotional polarity/intensity is across posts — high consistency is the
+  AI-operation signal). Cresci-2017 is used as a proxy: `genuine_accounts` =
+  human-operated, spambot subsets = the automated extreme.
+- Only `src/report.py`'s auto-generated wording changed for this reframe
+  (bot/human → AI-operated/human-operated in the narrative text). Every other
+  file - config, data loading, features, modeling, evaluation, pipeline
+  orchestration, the Colab notebook, and the dataset composition - is
+  identical to v2.
 
 ## Status
 
@@ -176,6 +203,7 @@ correct independent of having the real dataset downloaded.
 
 ## Key references
 
+v1/v2 backbone:
 - Dickerson, Kagan & Subrahmanian (2014), "Using Sentiment to Detect Bots
   on Twitter," IEEE/ACM ASONAM — origin of the sentiment-variance signal.
 - Xia et al. (2022), "A Method of Machine Learning for Social Bot Detection
@@ -184,5 +212,28 @@ correct independent of having the real dataset downloaded.
   Sentiment Features for Social Media Bot Detection," IEEE UEMCON — same
   dataset (Cresci-2017), a direct benchmark.
 
+v3 reframe — theoretical backbone and gap justification:
+- Li et al. (2025), "Model-Agnostic Sentiment Distribution Stability
+  Analysis for Robust LLM-Generated Texts Detection," arXiv:2508.06913 —
+  LLM outputs show emotionally consistent patterns; humans show greater
+  variability. Direct theoretical grounding for this study's core signal.
+- Di Paolo, Spognardi & Petrocchi (2025), "Detection of LLM-Powered Bots
+  Using Image Classification," First Monday — establishes the gap: very
+  few studies address LLM-powered bot/account detection specifically.
+- Zeng, Li & Wang (2025), "Emoji-Driven Sentiment Analysis for Social Bot
+  Detection with Relational Graph Convolutional Networks (ESA-BotRGCN),"
+  Sensors (MDPI) — sentiment as a legitimate, effective detection signal.
+- BotSSCL (2025), "Social Bot Detection with Self-Supervised Contrastive
+  Learning," ScienceDirect — peer-reviewed confirmation that bot posting
+  has minimal sentiment change due to focused, consistent objectives.
+- Staufer et al. (2026), "The 2025 AI Agent Index," ACM FAccT — documents
+  agentic AI systems deployed without standardised transparency, motivating
+  why account-level AI verification matters now.
+- Cresci et al. (2017), "The Paradigm-Shift of Social Spambots," WWW '17 —
+  the foundational Cresci-2017 dataset paper; cite whenever the dataset is
+  referenced.
+
 Full literature review, gap analysis, evaluation plan, and publication
-strategy are in `Bot_Detection_Research_Dossier.docx` (local only).
+strategy are in `Bot_Detection_Research_Dossier.docx` (v1/v2) and
+`Bot_Detection_Research_Dossier_v3.docx` (reframe rationale, definitions,
+paper text changes) — both local only.
