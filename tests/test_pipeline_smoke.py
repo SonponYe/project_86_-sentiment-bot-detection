@@ -71,6 +71,7 @@ def synthetic_raw_dir(tmp_path):
 def test_pipeline_runs_end_to_end(synthetic_raw_dir, tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline.config, "RESULTS_TABLES_DIR", tmp_path / "results_tables")
     monkeypatch.setattr(pipeline.config, "RESULTS_FIGURES_DIR", tmp_path / "results_figures")
+    monkeypatch.setattr(pipeline.config, "PROCESSED_DATA_DIR", tmp_path / "processed")
 
     outputs = pipeline.run_pipeline(raw_dir=synthetic_raw_dir, use_smote=False)
 
@@ -95,6 +96,7 @@ def test_pipeline_runs_end_to_end(synthetic_raw_dir, tmp_path, monkeypatch):
 def test_report_generates_from_pipeline_output(synthetic_raw_dir, tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline.config, "RESULTS_TABLES_DIR", tmp_path / "results_tables")
     monkeypatch.setattr(pipeline.config, "RESULTS_FIGURES_DIR", tmp_path / "results_figures")
+    monkeypatch.setattr(pipeline.config, "PROCESSED_DATA_DIR", tmp_path / "processed")
 
     pipeline.run_pipeline(raw_dir=synthetic_raw_dir, use_smote=False)
     result = report.generate_report()

@@ -40,15 +40,44 @@ def _save_confusion_matrices(experiment_results, out_dir) -> None:
         plt.close(fig)
 
 
-def run_pipeline(raw_dir=None, use_smote: bool = True) -> dict:
+def _load_or_build_features(raw_dir, use_cache: bool):
+    """Feature engineering is the expensive step (sentiment scoring over the
+    whole tweet corpus). Cache its output so re-running the pipeline after a
+    downstream bugfix doesn't repeat it.
+    """
+    cache_path = config.PROCESSED_DATA_DIR / "engineered_features.csv"
+    if use_cache and cache_path.exists():
+        logger.info("Loading cached engineered features from %s", cache_path)
+        merged = pd.read_csv(cache_path)
+        y = merged["label"].to_numpy()
+        set_a = merged[config.METADATA_FEATURES].copy()
+        set_b = merged[config.METADATA_FEATURES + config.SENTIMENT_FEATURES].copy()
+        return set_a, set_b, y, merged["account_key"]
+
+    users_df, tweets_df = load_cresci2017(raw_dir)
+    users_df, tweets_df = preprocessing.clean_accounts(users_df, tweets_df)
+    set_a, set_b, y, account_keys = features.build_feature_sets(users_df, tweets_df)
+
+    config.PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    cache_df = set_b.copy()
+    cache_df.insert(0, "account_key", account_keys.to_numpy())
+    cache_df["label"] = y
+    cache_df.to_csv(cache_path, index=False)
+    logger.info("Cached engineered features to %s", cache_path)
+
+    return set_a, set_b, y, account_keys
+
+
+def run_pipeline(raw_dir=None, use_smote: bool = True, use_cache: bool = True) -> dict:
     raw_dir = raw_dir if raw_dir is not None else config.RAW_DATA_DIR
     config.RESULTS_TABLES_DIR.mkdir(parents=True, exist_ok=True)
     config.RESULTS_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-    users_df, tweets_df = load_cresci2017(raw_dir)
-    users_df, tweets_df = preprocessing.clean_accounts(users_df, tweets_df)
-
-    set_a, set_b, y, account_keys = features.build_feature_sets(users_df, tweets_df)
+    set_a, set_b, y, account_keys = _load_or_build_features(raw_dir, use_cache)
+    logger.info(
+        "Full dataset class balance: %s",
+        pd.Series(y).value_counts().sort_index().to_dict(),
+    )
 
     idx_train, idx_test = train_test_split(
         np.arange(len(y)), test_size=config.TEST_SIZE, stratify=y, random_state=config.RANDOM_STATE
@@ -66,6 +95,15 @@ def run_pipeline(raw_dir=None, use_smote: bool = True) -> dict:
 
     set_a_train_bal, y_a_train_bal = preprocessing.maybe_balance(set_a_train, y_train, use_smote=use_smote)
     set_b_train_bal, y_b_train_bal = preprocessing.maybe_balance(set_b_train, y_train, use_smote=use_smote)
+
+    logger.info(
+        "Feature Set A training class balance: %s",
+        pd.Series(y_a_train_bal).value_counts().sort_index().to_dict(),
+    )
+    logger.info(
+        "Feature Set B training class balance: %s",
+        pd.Series(y_b_train_bal).value_counts().sort_index().to_dict(),
+    )
 
     results_a = modeling.run_experiments(
         set_a_train_bal, y_a_train_bal, set_a_test, y_test, "metadata_only"
