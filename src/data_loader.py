@@ -47,6 +47,21 @@ def _label_for_dir(dirname: str) -> int:
     return 0 if "genuine" in dirname.lower() else 1
 
 
+def _clean_id_series(series: pd.Series) -> pd.Series:
+    """Normalize account/tweet ID columns to a consistent string form.
+
+    A single missing value anywhere in an otherwise-all-integer ID column
+    forces pandas to upcast the whole column to float64 (int64 can't hold
+    NaN), which then stringifies as e.g. "678033.0" instead of "678033".
+    Found on the real dataset: genuine_accounts.csv's tweets.csv has exactly
+    one missing user_id, which silently broke every account_key match
+    against users.csv (which stayed int64) - dropping all human accounts
+    from the inner join with zero errors or warnings. Stripping a trailing
+    ".0" makes the join robust regardless of which dtype pandas inferred.
+    """
+    return series.astype(str).str.replace(r"\.0$", "", regex=True)
+
+
 def load_cresci2017(raw_dir: Path | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Load every account subset found under raw_dir.
 
@@ -88,8 +103,8 @@ def load_cresci2017(raw_dir: Path | None = None) -> tuple[pd.DataFrame, pd.DataF
         tweets = tweets.rename(columns={tweet_user_id_col: "user_id"})
 
         prefix = subset_dir.name
-        users["account_key"] = prefix + "_" + users["user_id"].astype(str)
-        tweets["account_key"] = prefix + "_" + tweets["user_id"].astype(str)
+        users["account_key"] = prefix + "_" + _clean_id_series(users["user_id"])
+        tweets["account_key"] = prefix + "_" + _clean_id_series(tweets["user_id"])
         users["label"] = _label_for_dir(prefix)
         users["source_subset"] = prefix
 
