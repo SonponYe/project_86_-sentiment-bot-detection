@@ -32,6 +32,32 @@ def clean_accounts(
     return kept_users, kept_tweets
 
 
+def scale_features(train_df: pd.DataFrame, test_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Standardize features (zero mean, unit variance), fit on train only.
+
+    Metadata features (e.g. followers_count, in the millions) and sentiment
+    features (roughly [-1, 1] or [0, 1]) sit on wildly different scales.
+    Distance/gradient-based models (SVM, Logistic Regression) are sensitive
+    to this: unscaled, large-magnitude metadata features can mathematically
+    dominate a model's decision regardless of what the smaller-magnitude
+    sentiment features say. Random Forest is scale-invariant (split-based),
+    so this has no effect on it either way - safe to apply unconditionally.
+
+    Applied before SMOTE, since SMOTE's k-NN interpolation is itself
+    distance-based and would suffer the same distortion otherwise.
+    """
+    from sklearn.preprocessing import StandardScaler
+
+    scaler = StandardScaler()
+    train_scaled = pd.DataFrame(
+        scaler.fit_transform(train_df), columns=train_df.columns, index=train_df.index
+    )
+    test_scaled = pd.DataFrame(
+        scaler.transform(test_df), columns=test_df.columns, index=test_df.index
+    )
+    return train_scaled, test_scaled
+
+
 def maybe_balance(X, y, use_smote: bool = True, random_state: int = config.RANDOM_STATE):
     """Oversample the minority class with SMOTE if classes are notably imbalanced.
 

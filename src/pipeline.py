@@ -93,6 +93,9 @@ def run_pipeline(raw_dir=None, use_smote: bool = True, use_cache: bool = True) -
     set_a_train, set_a_test = split(set_a)
     set_b_train, set_b_test = split(set_b)
 
+    set_a_train, set_a_test = preprocessing.scale_features(set_a_train, set_a_test)
+    set_b_train, set_b_test = preprocessing.scale_features(set_b_train, set_b_test)
+
     set_a_train_bal, y_a_train_bal = preprocessing.maybe_balance(set_a_train, y_train, use_smote=use_smote)
     set_b_train_bal, y_b_train_bal = preprocessing.maybe_balance(set_b_train, y_train, use_smote=use_smote)
 
