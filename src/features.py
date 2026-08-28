@@ -54,6 +54,65 @@ def _subjectivity_scores(texts: list[str]) -> np.ndarray:
     return np.array([TextBlob(t).sentiment.subjectivity for t in texts])
 
 
+def _classify_topic(text: str) -> str | None:
+    """Run 3: assign a tweet to the first matching keyword bucket, or None
+    if it matches none of config.TOPIC_KEYWORDS."""
+    lowered = text.lower()
+    for topic, keywords in config.TOPIC_KEYWORDS.items():
+        if any(keyword in lowered for keyword in keywords):
+            return topic
+    return None
+
+
+def _contextual_consistency_score(texts: list[str], polarity: np.ndarray) -> float:
+    """Run 3, Feature 1: std of mean sentiment across topic buckets.
+
+    LOW std = sentiment doesn't shift across contexts = high consistency =
+    AI-like. Needs tweets in >=2 distinct topic buckets; otherwise NaN
+    (filled with the column median - or 0.0 if every account in the run
+    lacks bucket coverage - once the full per-account table is built).
+    """
+    bucket_scores: dict[str, list[float]] = {}
+    for text, score in zip(texts, polarity):
+        topic = _classify_topic(text)
+        if topic is not None:
+            bucket_scores.setdefault(topic, []).append(score)
+
+    if len(bucket_scores) < 2:
+        return float("nan")
+
+    bucket_means = [float(np.mean(scores)) for scores in bucket_scores.values()]
+    return float(np.std(bucket_means, ddof=0))
+
+
+def _temporal_sentiment_drift(polarity: np.ndarray) -> float:
+    """Run 3, Feature 3: std of mean sentiment across three chronological
+    windows (early/mid/late - `polarity` must already be in chronological
+    order, oldest first).
+
+    LOW drift = emotionally flat over time = AI-like. Needs at least
+    config.MIN_TWEETS_FOR_TEMPORAL_DRIFT tweets; otherwise NaN (filled with
+    the column median at build time).
+    """
+    if len(polarity) < config.MIN_TWEETS_FOR_TEMPORAL_DRIFT:
+        return float("nan")
+
+    windows = [w for w in np.array_split(polarity, 3) if len(w) > 0]
+    if len(windows) < 2:
+        return float("nan")
+
+    window_means = [float(w.mean()) for w in windows]
+    return float(np.std(window_means, ddof=0))
+
+
+def _fill_with_median_or_zero(series: pd.Series) -> pd.Series:
+    """fillna(median), falling back to 0.0 if every value in the column is
+    NaN (median of an all-NaN series is itself NaN, which would otherwise
+    leave the column unfillable and crash model training downstream)."""
+    median = series.median()
+    return series.fillna(0.0 if pd.isna(median) else median)
+
+
 def build_sentiment_features(
     tweets_df: pd.DataFrame,
     text_col: str = "text",
@@ -92,6 +151,11 @@ def build_sentiment_features(
                 group = group.sort_values("_parsed_created_at", ascending=False)
             group = group.head(max_tweets_per_account)
 
+        # Chronological order (oldest first) for temporal_sentiment_drift's
+        # windowing below; harmless for the other, order-independent stats.
+        if "_parsed_created_at" in group.columns:
+            group = group.sort_values("_parsed_created_at", ascending=True)
+
         texts = group[text_col].dropna().astype(str).tolist()
         if not texts:
             continue
@@ -110,10 +174,16 @@ def build_sentiment_features(
                 "pct_neutral": float(np.mean((polarity >= -0.05) & (polarity <= 0.05))),
                 "mean_subjectivity": float(subjectivity.mean()),
                 "subjectivity_std": float(subjectivity.std(ddof=0)),
+                "contextual_consistency_score": _contextual_consistency_score(texts, polarity),
+                "temporal_sentiment_drift": _temporal_sentiment_drift(polarity),
             }
         )
 
-    return pd.DataFrame.from_records(records)
+    df = pd.DataFrame.from_records(records)
+    for col in ("contextual_consistency_score", "temporal_sentiment_drift"):
+        if col in df.columns:
+            df[col] = _fill_with_median_or_zero(df[col])
+    return df
 
 
 def build_feature_sets(

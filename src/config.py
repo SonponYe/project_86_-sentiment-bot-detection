@@ -30,11 +30,15 @@ F1_IMPROVEMENT_THRESHOLD = 0.03  # "3%+" improvement, per the dossier's Outcome 
 TWITTER_CREATED_AT_FORMAT = "%a %b %d %H:%M:%S %z %Y"
 
 # Feature Set A (baseline)
+#
+# Run 3 - metadata-constrained scenario: followers_count, friends_count,
+# statuses_count, and account_age_days removed. Across Run 1 and Run 2 these
+# four dominated Random Forest importance (ranks 1-4); removing them
+# simulates modern LLM agent accounts that mimic normal account statistics,
+# leaving sentiment as the primary remaining signal. See
+# findings/2026-08-28_run1_unscaled_features.md and _run2_scaled_features.md
+# for the full-metadata baselines this is compared against.
 METADATA_FEATURES = [
-    "followers_count",
-    "friends_count",
-    "statuses_count",
-    "account_age_days",
     "verified",
     "listed_count",
 ]
@@ -49,4 +53,34 @@ SENTIMENT_FEATURES = [
     "pct_neutral",
     "mean_subjectivity",
     "subjectivity_std",
+    # Run 3 additions
+    "contextual_consistency_score",
+    "temporal_sentiment_drift",
 ]
+
+# Run 3: minimum tweets across an account's chronological windows for
+# temporal_sentiment_drift to be computed; below this, NaN (filled with the
+# column median at build time).
+MIN_TWEETS_FOR_TEMPORAL_DRIFT = 15
+
+# Run 3: simple keyword buckets for contextual_consistency_score. A tweet is
+# assigned to the first bucket (in this order) whose keyword appears in it;
+# tweets matching none of these aren't counted in any bucket.
+TOPIC_KEYWORDS = {
+    "politics": [
+        "president", "election", "vote", "senate", "congress", "government",
+        "policy", "democrat", "republican", "politician", "minister", "parliament",
+    ],
+    "sports": [
+        "game", "team", "score", "match", "player", "coach", "championship",
+        "league", "tournament", "goal",
+    ],
+    "entertainment": [
+        "movie", "music", "celebrity", "concert", "album", "actor", "actress",
+        "film", "song", "singer", "hollywood",
+    ],
+    "news": [
+        "breaking", "report", "announced", "official statement", "confirmed",
+        "according to", "sources say",
+    ],
+}
