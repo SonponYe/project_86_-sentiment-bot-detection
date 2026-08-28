@@ -23,6 +23,12 @@ MAX_TWEETS_PER_ACCOUNT_FOR_SENTIMENT = 200
 SIGNIFICANCE_ALPHA = 0.05
 F1_IMPROVEMENT_THRESHOLD = 0.03  # "3%+" improvement, per the dossier's Outcome A
 
+# Format of Cresci-2017's `created_at` timestamps (classic Twitter API v1.1),
+# e.g. "Mon Jan 01 00:00:00 +0000 2015". Passing this explicitly to
+# pd.to_datetime lets pandas use its fast vectorized parser instead of
+# falling back to a slow per-row dateutil parse for every timestamp.
+TWITTER_CREATED_AT_FORMAT = "%a %b %d %H:%M:%S %z %Y"
+
 # Feature Set A (baseline)
 METADATA_FEATURES = [
     "followers_count",

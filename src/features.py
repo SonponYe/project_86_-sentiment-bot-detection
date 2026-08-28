@@ -21,7 +21,9 @@ def build_metadata_features(users_df: pd.DataFrame) -> pd.DataFrame:
     df = users_df.copy()
 
     if "account_age_days" not in df.columns:
-        created = pd.to_datetime(df.get("created_at"), errors="coerce", utc=True)
+        created = pd.to_datetime(
+            df.get("created_at"), format=config.TWITTER_CREATED_AT_FORMAT, errors="coerce", utc=True
+        )
         now = pd.Timestamp.now(tz="UTC")
         df["account_age_days"] = (now - created).dt.days
 
@@ -71,14 +73,23 @@ def build_sentiment_features(
     records = []
     threshold = config.EXTREME_SENTIMENT_THRESHOLD
 
+    if max_tweets_per_account is not None and "created_at" in tweets_df.columns:
+        # Parsed once, vectorized, over the whole corpus - not per account
+        # group inside the loop below - since pandas can't auto-infer
+        # Twitter's format and would otherwise fall back to a slow per-row
+        # dateutil parse on every single loop iteration.
+        tweets_df = tweets_df.copy()
+        tweets_df["_parsed_created_at"] = pd.to_datetime(
+            tweets_df["created_at"], format=config.TWITTER_CREATED_AT_FORMAT, errors="coerce", utc=True
+        )
+
     grouped = tweets_df.groupby("account_key")
     for account_key, group in tqdm(
         grouped, total=grouped.ngroups, desc="Scoring sentiment per account", unit="account"
     ):
         if max_tweets_per_account is not None and len(group) > max_tweets_per_account:
-            if "created_at" in group.columns:
-                order = pd.to_datetime(group["created_at"], errors="coerce", utc=True)
-                group = group.loc[order.sort_values(ascending=False).index]
+            if "_parsed_created_at" in group.columns:
+                group = group.sort_values("_parsed_created_at", ascending=False)
             group = group.head(max_tweets_per_account)
 
         texts = group[text_col].dropna().astype(str).tolist()
