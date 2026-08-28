@@ -76,8 +76,11 @@ def load_cresci2017(raw_dir: Path | None = None) -> tuple[pd.DataFrame, pd.DataF
             logger.warning("Skipping %s: missing users.csv or tweets.csv", subset_dir)
             continue
 
-        users = pd.read_csv(users_path, low_memory=False)
-        tweets = pd.read_csv(tweets_path, low_memory=False)
+        # encoding_errors="replace": these 2016-era CSV dumps contain occasional
+        # invalid UTF-8 byte sequences (stray bytes from mixed source encodings).
+        # Replace just the bad bytes with U+FFFD rather than failing the whole load.
+        users = pd.read_csv(users_path, low_memory=False, encoding="utf-8", encoding_errors="replace")
+        tweets = pd.read_csv(tweets_path, low_memory=False, encoding="utf-8", encoding_errors="replace")
 
         user_id_col = _first_present(users.columns, USER_ID_CANDIDATES)
         tweet_user_id_col = _first_present(tweets.columns, TWEET_USER_ID_CANDIDATES)
