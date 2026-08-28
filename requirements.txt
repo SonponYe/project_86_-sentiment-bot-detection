@@ -8,5 +8,6 @@ statsmodels
 matplotlib
 seaborn
 jupyter
+ipykernel
 pytest
 tqdm
