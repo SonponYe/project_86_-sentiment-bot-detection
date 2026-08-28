@@ -39,10 +39,30 @@ literature review, and evaluation plan live in the local planning documents
 
 ## Status
 
-Pipeline code is written and passes a smoke test on synthetic data. The real
-Cresci-2017 dataset has been downloaded (as zips under `cresci-2017.csv/`,
-gitignored) but not yet run through the pipeline — that's the next step, via
-Colab (see below).
+Pipeline code is written, passes a smoke test on synthetic data, and has
+been run against the real Cresci-2017 dataset three times (locally — see
+`## Results` below). Each run changed one methodological variable; full
+numbers are archived in `findings/`.
+
+## Results
+
+Three runs completed so far, each isolating one methodological change.
+`results/` itself is gitignored and gets overwritten on every run, so
+`findings/` is the durable record — full tables (McNemar significance,
+feature importance, per-model deltas) are in each linked file.
+
+| Run | What changed | Headline finding |
+|---|---|---|
+| [1 — unscaled](findings/2026-08-28_run1_unscaled_features.md) | Baseline: Feature Set A (6 metadata features) vs. B (+8 sentiment features), no feature scaling | Outcome B (mixed). Logistic Regression and Random Forest improve significantly from sentiment; SVM shows *exactly zero* effect (identical metrics to 6 decimals) — the signature of a feature being invisible to the model, not a real null result. |
+| [2 — scaled](findings/2026-08-28_run2_scaled_features.md) | Added `StandardScaler` (fit on train only, applied before SMOTE) | Confirmed Run 1's SVM null was a scaling artifact: unscaled metadata (`followers_count` in the millions) was drowning out sentiment features (~[-1,1]) in SVM's distance-based kernel. Scaled, SVM shows a real, significant improvement (+2.1 F1, p=6.4e-6). |
+| [3 — metadata-constrained](findings/2026-08-28_run3_metadata_constrained.md) | Removed the 4 metadata features that dominated importance rankings (`followers_count`, `friends_count`, `statuses_count`, `account_age_days`) — simulating accounts whose metadata looks normal (e.g. sophisticated bots/LLM agents). Added 3 new sentiment features: `contextual_consistency_score`, `temporal_sentiment_drift`, `sentiment_topic_alignment_score`. | Strongest confirmation yet: Random Forest F1 jumps from 0.778 to 0.957 (+17.9 points, p=1.98e-60) once sentiment is the only usable signal. `polarity_std` reaches the top-5 most important features for the first time — the exact effect Dickerson et al. (2014) predicted, previously drowned out by metadata dominance. The three new features underperform, ranking last (10th-12th of 13). |
+
+**The current code reflects Run 3's configuration** — Feature Set A is
+metadata-constrained (`verified`, `listed_count` only) and Feature Set B
+includes all 11 sentiment features. To reproduce Run 1 or 2's full-metadata
+results, restore `followers_count`, `friends_count`, `statuses_count`,
+`account_age_days` to `METADATA_FEATURES` in `src/config.py` (see commit
+`a4786f5` for that exact prior state).
 
 ## Repository layout
 
@@ -50,7 +70,8 @@ Colab (see below).
 src/
   config.py        paths, random seed, feature lists
   data_loader.py    load Cresci-2017 users.csv/tweets.csv per class
-  preprocessing.py  drop low-activity accounts, optional SMOTE (train-only)
+  preprocessing.py  drop low-activity accounts, feature scaling, optional
+                     SMOTE (train-only)
   features.py       Feature Set A (metadata) and B (metadata + sentiment)
   modeling.py       Logistic Regression / Random Forest / SVM, 5-fold CV
   evaluation.py     accuracy/precision/recall/F1/ROC-AUC, McNemar's test,
@@ -59,10 +80,21 @@ src/
   report.py         interprets results/, classifies the headline outcome,
                      writes interpretation_report.md + comparison plots
 tests/
-  test_pipeline_smoke.py   runs the full pipeline + report on tiny synthetic data
+  test_pipeline_smoke.py    runs the full pipeline + report on tiny synthetic data
+  test_data_loader.py       regression tests for real-data edge cases hit so far
+                             (invalid UTF-8 bytes, an ID dtype mismatch)
+  test_features_run3.py     unit tests for the Run 3 feature helpers
+findings/
+  2026-08-28_run1_unscaled_features.md    archived numbers per run - see
+  2026-08-28_run2_scaled_features.md      `## Results` above. Durable
+  2026-08-28_run3_metadata_constrained.md record; results/ is gitignored.
 data/
   raw/              put the downloaded Cresci-2017 subsets here (gitignored)
-  processed/        intermediate artifacts (gitignored)
+  processed/        engineered_features.csv - cached feature-engineering
+                     output (gitignored). Lets pipeline.py skip the slow
+                     load+clean+sentiment-scoring steps on re-runs; delete
+                     it after changing feature engineering logic, since a
+                     stale cache with a different schema will crash the run.
 results/
   tables/           experiment_summary.csv, mcnemar_significance.csv,
                      feature_importance.csv, interpretation_report.md
