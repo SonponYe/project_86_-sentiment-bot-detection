@@ -48,13 +48,9 @@ NARRATIVES = {
         "less natural emotional variability (higher sentiment consistency) than human-operated "
         "accounts."
     ),
-    "B": (
-        "Results are mixed: sentiment features improved {improved_models} performance but not "
-        "{unimproved_models}. This suggests that the relationship between sentiment consistency "
-        "and account-operation type is non-linear, favouring tree-based and kernel-based methods "
-        "over linear ones. Future work should explore sentiment feature engineering that "
-        "linearises these relationships."
-    ),
+    # "B" has no fixed template - see _render_outcome_b_narrative, since which
+    # models improved/didn't (and whether "improved" reached significance) varies
+    # too much for one fill-in-the-blank sentence to describe accurately.
     "C": (
         "Contrary to prior findings by Dickerson et al. (2014), this study found no "
         "statistically significant improvement from adding sentiment features on the "
@@ -148,13 +144,41 @@ def feature_importance_note(importance: pd.DataFrame, top_n: int = 5) -> str:
     )
 
 
-def _narrative_kwargs(classified: pd.DataFrame) -> dict:
-    improved = classified.loc[classified["verdict"] != "no_improvement", "model"].tolist()
-    not_improved = classified.loc[classified["verdict"] == "no_improvement", "model"].tolist()
-    return {
-        "improved_models": ", ".join(improved) if improved else "none",
-        "unimproved_models": ", ".join(not_improved) if not_improved else "none",
+def _render_outcome_b_narrative(classified: pd.DataFrame) -> str:
+    """Outcome B covers several distinct shapes of "mixed" (some models improve
+    and others don't; all improve but only some significantly; etc.) - too
+    varied for one fill-in-the-blank template, so compose it from the actual
+    verdicts instead.
+    """
+    by_verdict = {
+        verdict: classified.loc[classified["verdict"] == verdict, "model"].tolist()
+        for verdict in (
+            "significant_improvement",
+            "significant_but_small",
+            "improvement_not_significant",
+            "no_improvement",
+        )
     }
+
+    clauses = []
+    significant = by_verdict["significant_improvement"] + by_verdict["significant_but_small"]
+    if significant:
+        clauses.append(f"a statistically significant improvement for {', '.join(significant)}")
+    if by_verdict["improvement_not_significant"]:
+        clauses.append(
+            f"a positive but not statistically significant improvement for "
+            f"{', '.join(by_verdict['improvement_not_significant'])}"
+        )
+    if by_verdict["no_improvement"]:
+        clauses.append(f"no improvement at all for {', '.join(by_verdict['no_improvement'])}")
+
+    summary = "; ".join(clauses) + "."
+    return (
+        f"Results are mixed: sentiment features produced {summary} This suggests the "
+        "relationship between sentiment consistency and account-operation type is not "
+        "uniform across model types - distance/gradient-based and ensemble methods "
+        "responded differently. Future work should investigate why."
+    )
 
 
 def _df_block(df: pd.DataFrame) -> str:
@@ -168,9 +192,10 @@ def render_report(
     overall_outcome: str,
     feature_note: str,
 ) -> str:
-    narrative = NARRATIVES[overall_outcome]
     if overall_outcome == "B":
-        narrative = narrative.format(**_narrative_kwargs(classified))
+        narrative = _render_outcome_b_narrative(classified)
+    else:
+        narrative = NARRATIVES[overall_outcome]
 
     lines = [
         "# Results Interpretation",
