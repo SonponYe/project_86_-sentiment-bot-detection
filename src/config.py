@@ -56,6 +56,7 @@ SENTIMENT_FEATURES = [
     # Run 3 additions
     "contextual_consistency_score",
     "temporal_sentiment_drift",
+    "sentiment_topic_alignment_score",
 ]
 
 # Run 3: minimum tweets across an account's chronological windows for

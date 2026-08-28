@@ -105,6 +105,55 @@ def _temporal_sentiment_drift(polarity: np.ndarray) -> float:
     return float(np.std(window_means, ddof=0))
 
 
+def _topic_mismatch(topic: str, polarity_score: float) -> bool:
+    """Run 3, Feature 2: whether one tweet's sentiment breaks the "expected"
+    pattern for its topic bucket.
+
+    These four rules are an explicit authorial interpretation filling a gap
+    in the original brief, not a claim grounded in cited literature - the
+    brief only gave qualitative descriptions for three of four buckets
+    ("expect strong polarity" / "expect positive lean" / "expect high
+    variance") and none for "news". Documented here rather than left
+    implicit:
+      - politics:       mismatch if |polarity| < 0.5 (not strongly opinionated)
+      - entertainment:  mismatch if polarity <= 0 (not positive)
+      - sports:         "expect high variance" isn't a per-tweet property
+                         (variance needs multiple tweets); reinterpreted as
+                         "expect non-neutral" - mismatch if |polarity| < 0.2
+      - news:           not specified in the brief; inferred as the inverse
+                         of politics (news expected to read neutral/factual)
+                         - mismatch if |polarity| > 0.5
+    """
+    if topic == "politics":
+        return abs(polarity_score) < 0.5
+    if topic == "entertainment":
+        return polarity_score <= 0
+    if topic == "sports":
+        return abs(polarity_score) < 0.2
+    if topic == "news":
+        return abs(polarity_score) > 0.5
+    return False
+
+
+def _sentiment_topic_alignment_score(texts: list[str], polarity: np.ndarray) -> float:
+    """Run 3, Feature 2: proportion of topic-tagged tweets whose sentiment
+    breaks the expected pattern for their bucket (see _topic_mismatch).
+    Higher = more misalignment = more AI-like. NaN if an account has zero
+    topic-tagged tweets (filled with the column median - or 0.0 if every
+    account in the run lacks bucket coverage - once the full per-account
+    table is built).
+    """
+    mismatches = []
+    for text, score in zip(texts, polarity):
+        topic = _classify_topic(text)
+        if topic is not None:
+            mismatches.append(_topic_mismatch(topic, score))
+
+    if not mismatches:
+        return float("nan")
+    return float(np.mean(mismatches))
+
+
 def _fill_with_median_or_zero(series: pd.Series) -> pd.Series:
     """fillna(median), falling back to 0.0 if every value in the column is
     NaN (median of an all-NaN series is itself NaN, which would otherwise
@@ -176,11 +225,16 @@ def build_sentiment_features(
                 "subjectivity_std": float(subjectivity.std(ddof=0)),
                 "contextual_consistency_score": _contextual_consistency_score(texts, polarity),
                 "temporal_sentiment_drift": _temporal_sentiment_drift(polarity),
+                "sentiment_topic_alignment_score": _sentiment_topic_alignment_score(texts, polarity),
             }
         )
 
     df = pd.DataFrame.from_records(records)
-    for col in ("contextual_consistency_score", "temporal_sentiment_drift"):
+    for col in (
+        "contextual_consistency_score",
+        "temporal_sentiment_drift",
+        "sentiment_topic_alignment_score",
+    ):
         if col in df.columns:
             df[col] = _fill_with_median_or_zero(df[col])
     return df

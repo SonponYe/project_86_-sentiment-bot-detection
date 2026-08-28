@@ -13,7 +13,9 @@ from src.features import (
     _classify_topic,
     _contextual_consistency_score,
     _fill_with_median_or_zero,
+    _sentiment_topic_alignment_score,
     _temporal_sentiment_drift,
+    _topic_mismatch,
 )
 
 
@@ -68,3 +70,35 @@ def test_fill_with_median_or_zero_falls_back_to_zero_when_all_nan():
     series = pd.Series([np.nan, np.nan, np.nan])
     filled = _fill_with_median_or_zero(series)
     assert filled.tolist() == [0.0, 0.0, 0.0]
+
+
+def test_topic_mismatch_rules():
+    # politics: mismatch if |polarity| < 0.5
+    assert _topic_mismatch("politics", 0.1) is True
+    assert _topic_mismatch("politics", 0.7) is False
+    # entertainment: mismatch if polarity <= 0
+    assert _topic_mismatch("entertainment", -0.1) is True
+    assert _topic_mismatch("entertainment", 0.3) is False
+    # sports: mismatch if |polarity| < 0.2 (near-neutral)
+    assert _topic_mismatch("sports", 0.05) is True
+    assert _topic_mismatch("sports", 0.5) is False
+    # news: mismatch if |polarity| > 0.5 (expect neutral/factual)
+    assert _topic_mismatch("news", 0.8) is True
+    assert _topic_mismatch("news", 0.1) is False
+
+
+def test_sentiment_topic_alignment_score_needs_topic_tagged_tweets():
+    texts = ["I had cereal for breakfast", "Just chilling at home"]
+    polarity = np.array([0.1, 0.0])
+    assert np.isnan(_sentiment_topic_alignment_score(texts, polarity))
+
+
+def test_sentiment_topic_alignment_score_computes_mismatch_proportion():
+    texts = [
+        "The senate voted today",  # politics, mismatch (weak polarity)
+        "The senate policy passed",  # politics, match (strong polarity)
+        "I had cereal for breakfast",  # untagged, excluded
+    ]
+    polarity = np.array([0.1, 0.9, 0.0])
+    score = _sentiment_topic_alignment_score(texts, polarity)
+    assert score == pytest.approx(0.5)  # 1 mismatch out of 2 tagged tweets
