@@ -48,14 +48,71 @@ numbers are archived in `findings/`.
 
 Three runs completed so far, each isolating one methodological change.
 `results/` itself is gitignored and gets overwritten on every run, so
-`findings/` is the durable record — full tables (McNemar significance,
-feature importance, per-model deltas) are in each linked file.
+`findings/` is the durable record — each linked file has the full tables
+(complete McNemar output, full feature-importance ranking, precision/recall
+detail) behind the summaries below.
 
-| Run | What changed | Headline finding |
-|---|---|---|
-| [1 — unscaled](findings/2026-08-28_run1_unscaled_features.md) | Baseline: Feature Set A (6 metadata features) vs. B (+8 sentiment features), no feature scaling | Outcome B (mixed). Logistic Regression and Random Forest improve significantly from sentiment; SVM shows *exactly zero* effect (identical metrics to 6 decimals) — the signature of a feature being invisible to the model, not a real null result. |
-| [2 — scaled](findings/2026-08-28_run2_scaled_features.md) | Added `StandardScaler` (fit on train only, applied before SMOTE) | Confirmed Run 1's SVM null was a scaling artifact: unscaled metadata (`followers_count` in the millions) was drowning out sentiment features (~[-1,1]) in SVM's distance-based kernel. Scaled, SVM shows a real, significant improvement (+2.1 F1, p=6.4e-6). |
-| [3 — metadata-constrained](findings/2026-08-28_run3_metadata_constrained.md) | Removed the 4 metadata features that dominated importance rankings (`followers_count`, `friends_count`, `statuses_count`, `account_age_days`) — simulating accounts whose metadata looks normal (e.g. sophisticated bots/LLM agents). Added 3 new sentiment features: `contextual_consistency_score`, `temporal_sentiment_drift`, `sentiment_topic_alignment_score`. | Strongest confirmation yet: Random Forest F1 jumps from 0.778 to 0.957 (+17.9 points, p=1.98e-60) once sentiment is the only usable signal. `polarity_std` reaches the top-5 most important features for the first time — the exact effect Dickerson et al. (2014) predicted, previously drowned out by metadata dominance. The three new features underperform, ranking last (10th-12th of 13). |
+### Run 1 — Unscaled features (baseline)
+
+Feature Set A: 6 metadata features. Feature Set B: A + 8 sentiment features.
+No feature scaling. [Full write-up →](findings/2026-08-28_run1_unscaled_features.md)
+
+| model | F1 (A) | F1 (B) | Δ F1 | p-value | verdict |
+|---|---|---|---|---|---|
+| logistic_regression | 0.9067 | 0.9448 | +0.0381 | 8.62e-13 | significant_improvement |
+| random_forest | 0.9801 | 0.9862 | +0.0061 | 0.0209 | significant_but_small |
+| svm | 0.9415 | 0.9415 | **0.0000** | 1.0000 | no_improvement |
+
+**Outcome B (mixed).** SVM's exact-zero delta (identical metrics to 6
+decimals) turned out to be a scaling artifact, not a real finding — see Run 2.
+
+### Run 2 — Scaled features
+
+Same feature sets as Run 1, plus `StandardScaler` (fit on train only,
+applied before SMOTE so its k-NN interpolation isn't distorted by the same
+scale issue). [Full write-up →](findings/2026-08-28_run2_scaled_features.md)
+
+| model | F1 (A) | F1 (B) | Δ F1 | p-value | verdict |
+|---|---|---|---|---|---|
+| logistic_regression | 0.9062 | 0.9549 | +0.0487 | 2.32e-15 | significant_improvement |
+| random_forest | 0.9838 | 0.9866 | +0.0028 | 0.2632 | improvement_not_significant |
+| svm | 0.9544 | 0.9755 | **+0.0211** | 6.35e-6 | significant_but_small |
+
+**Confirms scaling was the fix.** SVM now shows a real, significant effect.
+Random Forest's own delta shrank and lost significance — not a contradiction:
+scaling now happens before SMOTE too, so SMOTE's synthetic samples improved,
+lifting RF's already-near-ceiling metadata-only baseline (0.980→0.984)
+rather than leaving room for sentiment to add more on top.
+
+### Run 3 — Metadata-constrained + 3 new sentiment features
+
+Removed the 4 metadata features that dominated importance rankings
+(`followers_count`, `friends_count`, `statuses_count`, `account_age_days`) —
+simulating accounts whose metadata looks normal (e.g. sophisticated
+bots/LLM agents). Added `contextual_consistency_score`,
+`temporal_sentiment_drift`, `sentiment_topic_alignment_score`.
+[Full write-up →](findings/2026-08-28_run3_metadata_constrained.md)
+
+| model | F1 (A) | F1 (B) | Δ F1 | ROC-AUC Δ | p-value | verdict |
+|---|---|---|---|---|---|---|
+| logistic_regression | 0.9094 | 0.8630 | -0.0465 | +0.0866 | 2.58e-4 | no_improvement* |
+| random_forest | 0.7781 | 0.9571 | **+0.1791** | +0.2030 | 1.98e-60 | significant_improvement |
+| svm | 0.9113 | 0.9406 | +0.0293 | +0.1654 | 1.87e-6 | significant_but_small |
+
+**Strongest confirmation yet.** With only `verified`/`listed_count` to work
+with, Random Forest barely functions (F1 0.778) — adding sentiment nearly
+doubles its effective performance (F1 0.957, p=1.98e-60). Feature
+importance: `polarity_std` reaches the top 5 for the first time across all
+three runs (previously ranks 8-9, now rank 5) — the exact effect Dickerson
+et al. (2014) predicted, drowned out by metadata dominance until now. The
+three new features underperform, ranking last (10th-12th of 13 features).
+
+*LR's F1 *drop* is misleading, not a real regression: with only 2 weak
+features, LR's metadata-only F1 (0.909) was inflated by mimicking the ~84%
+bot base rate; adding sentiment made LR actually use it (lower bot-recall,
+hence lower F1 at the default threshold) while genuinely improving
+discrimination (ROC-AUC +8.7 points). See the linked write-up for the full
+explanation.
 
 **The current code reflects Run 3's configuration** — Feature Set A is
 metadata-constrained (`verified`, `listed_count` only) and Feature Set B
@@ -154,7 +211,11 @@ as human (0) and everything else as bot (1); it's tolerant of `id` vs.
 
 `Twibot_20.json` (secondary/comparison dataset) and `botometer-feedback-2019/`
 (supplementary) are also on disk (gitignored) but use different schemas the
-current loader doesn't support — they're optional later steps, not needed
+current loader doesn't support. **`Twibot_20.json` was checked and isn't
+directly usable even if a loader were written for it: it's only 100 records
+(the real TwiBot-20 has ~229,573) and has zero labeled accounts (no `label`
+field on any record) — it appears to be an unlabeled sample, not the
+dataset itself.** Both are optional later steps, not needed
 for the primary experiment.
 
 ## Run the pipeline — on Google Colab (recommended)
@@ -187,18 +248,28 @@ Once `data/raw/` is populated (see above):
 ```
 
 This will:
-1. Load and clean the accounts (drop accounts with <10 tweets, dedupe).
-2. Build Feature Set A (metadata only) and Feature Set B (metadata +
-   sentiment: mean/variance of VADER polarity, % extreme-sentiment tweets,
-   sentiment class distribution, TextBlob subjectivity mean/variance).
-3. Take one stratified 80/20 train/test split shared by both feature sets
+1. Load and clean the accounts (drop accounts with <10 tweets, dedupe) —
+   or, if `data/processed/engineered_features.csv` already exists from a
+   prior run, skip straight to step 6 using the cached features (delete
+   that file first if you've changed feature-engineering logic, since a
+   stale cache with a different column schema will crash the run).
+2. Build Feature Set A (as of Run 3: `verified`, `listed_count` only — a
+   metadata-constrained scenario, see `## Results`) and Feature Set B
+   (Feature Set A + 11 sentiment features: VADER polarity mean/variance/
+   extremity/class-distribution, TextBlob subjectivity mean/variance, plus
+   the three Run 3 additions — `contextual_consistency_score`,
+   `temporal_sentiment_drift`, `sentiment_topic_alignment_score`).
+3. Cache the engineered features to `data/processed/engineered_features.csv`.
+4. Take one stratified 80/20 train/test split shared by both feature sets
    (`random_state=42`), so the two feature sets are compared on identical
-   examples. SMOTE, if the class balance warrants it, is fit on the
-   training portion only.
-4. Train Logistic Regression, Random Forest, and SVM on each feature set
+   examples.
+5. Scale both feature sets (`StandardScaler`, fit on the training split
+   only), then apply SMOTE if the class balance warrants it — fit on the
+   (scaled) training portion only, never the test set.
+6. Train Logistic Regression, Random Forest, and SVM on each feature set
    (6 experiments total), with 5-fold stratified CV (F1) on the training
    set.
-5. Write `results/tables/experiment_summary.csv` (accuracy, precision,
+7. Write `results/tables/experiment_summary.csv` (accuracy, precision,
    recall, F1, ROC-AUC, CV F1 per experiment), `mcnemar_significance.csv`
    (per-model significance test of metadata-only vs. metadata+sentiment),
    `feature_importance.csv` (Random Forest importances for Feature Set B),

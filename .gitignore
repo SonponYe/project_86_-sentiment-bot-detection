@@ -25,6 +25,7 @@ data/processed/*
 cresci-2017.csv/
 Twibot_20.json
 botometer-feedback-2019/
+twibot-22 (1).csv/
 
 # Results (regeneratable outputs)
 results/figures/*
