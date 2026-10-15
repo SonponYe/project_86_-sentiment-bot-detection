@@ -1,0 +1,5 @@
+model,feature_set,TP_automated_caught,FN_automated_missed,FP_humans_flagged,TN_humans_cleared,precision,human_recall,false_flag_rate_humans,balanced_accuracy,macro_f1
+random_forest,A,731,364,53,163,0.9324,0.7546,0.2454,0.7111,0.6084
+random_forest,B,1038,57,36,180,0.9665,0.8333,0.1667,0.8906,0.8759
+logistic_regression,A,1029,66,139,77,0.881,0.3565,0.6435,0.6481,0.6692
+logistic_regression,B,869,226,50,166,0.9456,0.7685,0.2315,0.7811,0.7045

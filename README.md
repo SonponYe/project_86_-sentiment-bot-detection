@@ -1,5 +1,50 @@
 # Sentiment Consistency as a Signal for Detecting AI-Operated Accounts
 
+> **DCIT 316 Final Course Project – submission**
+> **Student:** Sonpon Ye-shua Chief · **ID:** 22082706
+> **Course:** DCIT 316 Computational Models for Social Media Mining, University of Ghana
+> **Submitted version:** tag `v1.0-final` (final commit on `main`, 15 Oct 2026)
+
+## Submission evidence map
+
+| Rubric evidence | Where |
+|---|---|
+| Manuscript (PDF) | uploaded to Sakai: `FINAL_PROJECT_22082706_SonponYeshuaChief.pdf` |
+| Reproduction steps | this README → **Quick reproduction** below |
+| Source code | `src/` (pipeline), `tests/` (14 tests), `scripts/` |
+| Notebooks with visible outputs | `notebooks/results_summary.ipynb` (executed; no raw data needed). Pipeline runners: `notebooks/run_pipeline_local.ipynb`, `notebooks/run_pipeline_colab.ipynb` (need the dataset) |
+| Saved metrics | `findings/` (archived report per run), `results/metrics/` (CSV) |
+| Figures | `results/figures/fig1_f1_by_run.png`, `fig2_feature_importance_run3.png`, `fig3_confusion_run3.png` |
+| Literature matrix | `docs/literature_matrix.md` |
+| Data card / model card | `docs/data_card.md`, `docs/model_card.md` |
+| Ethics statement | `docs/ethics_statement.md` |
+| AI-use disclosure | `docs/ai_use_disclosure.md` |
+| Failure log | `docs/failure_log.md` |
+| Reproducibility checklist | `docs/reproducibility_checklist.md` |
+
+**Safe data access.** The Cresci-2017 dataset is research-only and is **not** in this repository. Download it from the Bot Repository (https://botometer.osome.iu.edu/bot-repository/datasets.html) and extract the subsets into `data/raw/` (layout under **The dataset** below). No passwords, API keys or tokens are used or stored.
+
+## Quick reproduction
+
+```bash
+git clone https://github.com/SonponYe/project_86_-sentiment-bot-detection
+cd project_86_-sentiment-bot-detection
+python -m venv venv && source venv/bin/activate      # Windows: .\venv\Scripts\activate
+pip install -r requirements.txt
+
+# 1. Tests (no data needed, ~15 s)
+python -m pytest -q                                   # expect: 14 passed
+
+# 2. Figures, baseline and error analysis from the saved metrics (no data needed)
+jupyter nbconvert --to notebook --execute --inplace notebooks/results_summary.ipynb
+
+# 3. Full experiment (needs Cresci-2017 in data/raw/; ~30-40 min, mostly sentiment scoring)
+python -m src.pipeline        # Run 3 configuration (current code)
+python -m src.report          # outcome classification + plots
+```
+
+Runs 1 and 2 use the full metadata feature list; see **Results → Run 3** below for how to restore it.
+
 Research question: does sentiment consistency (polarity, variance, extremity
 across an account's post history) meaningfully distinguish human-operated
 accounts from AI-operated ones, on top of account metadata alone?
@@ -306,35 +351,7 @@ correct independent of having the real dataset downloaded.
 
 ## Key references
 
-v1/v2 backbone:
-- Dickerson, Kagan & Subrahmanian (2014), "Using Sentiment to Detect Bots
-  on Twitter," IEEE/ACM ASONAM — origin of the sentiment-variance signal.
-- Xia et al. (2022), "A Method of Machine Learning for Social Bot Detection
-  Combined with Sentiment Analysis," ACM MLNLP — closest related method.
-- Heidari & Jones (2020), "Using BERT to Extract Topic-Independent
-  Sentiment Features for Social Media Bot Detection," IEEE UEMCON — same
-  dataset (Cresci-2017), a direct benchmark.
-
-v3 reframe — theoretical backbone and gap justification:
-- Li et al. (2025), "Model-Agnostic Sentiment Distribution Stability
-  Analysis for Robust LLM-Generated Texts Detection," arXiv:2508.06913 —
-  LLM outputs show emotionally consistent patterns; humans show greater
-  variability. Direct theoretical grounding for this study's core signal.
-- Di Paolo, Spognardi & Petrocchi (2025), "Detection of LLM-Powered Bots
-  Using Image Classification," First Monday — establishes the gap: very
-  few studies address LLM-powered bot/account detection specifically.
-- Zeng, Li & Wang (2025), "Emoji-Driven Sentiment Analysis for Social Bot
-  Detection with Relational Graph Convolutional Networks (ESA-BotRGCN),"
-  Sensors (MDPI) — sentiment as a legitimate, effective detection signal.
-- BotSSCL (2025), "Social Bot Detection with Self-Supervised Contrastive
-  Learning," ScienceDirect — peer-reviewed confirmation that bot posting
-  has minimal sentiment change due to focused, consistent objectives.
-- Staufer et al. (2026), "The 2025 AI Agent Index," ACM FAccT — documents
-  agentic AI systems deployed without standardised transparency, motivating
-  why account-level AI verification matters now.
-- Cresci et al. (2017), "The Paradigm-Shift of Social Spambots," WWW '17 —
-  the foundational Cresci-2017 dataset paper; cite whenever the dataset is
-  referenced.
+The verified reference list is in the manuscript and in `docs/literature_matrix.md` (14 sources, each checked against its publisher or arXiv page).
 
 Full literature review, gap analysis, evaluation plan, and publication
 strategy are in `Bot_Detection_Research_Dossier.docx` (v1/v2) and

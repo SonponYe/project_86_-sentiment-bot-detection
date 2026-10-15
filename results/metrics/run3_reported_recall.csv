@@ -1,0 +1,5 @@
+model,feature_set,f1,recall_automated,roc_auc,source
+random_forest,A,0.7781,0.668,,findings/2026-08-28_run3_metadata_constrained.md
+random_forest,B,0.9571,0.948,,findings/2026-08-28_run3_metadata_constrained.md
+logistic_regression,A,0.9094,0.940,0.774,findings/2026-08-28_run3_metadata_constrained.md
+logistic_regression,B,0.8630,0.794,0.860,findings/2026-08-28_run3_metadata_constrained.md

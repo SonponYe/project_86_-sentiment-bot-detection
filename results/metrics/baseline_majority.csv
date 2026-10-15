@@ -1,0 +1,2 @@
+model,accuracy,precision,recall,f1,roc_auc,human_recall
+majority_class (always automated),0.8352,0.8352,1.0,0.9102,0.5,0.0

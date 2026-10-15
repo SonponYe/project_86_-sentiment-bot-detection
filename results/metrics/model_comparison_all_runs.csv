@@ -1,0 +1,10 @@
+run,run_description,model,f1_metadata_only_A,f1_metadata_plus_sentiment_B,delta_f1,delta_roc_auc,mcnemar_p_value,report_py_verdict,source
+1,full metadata unscaled,logistic_regression,0.9067,0.9448,0.0381,0.0022,8.62e-13,significant_improvement,findings/2026-08-28_run1_unscaled_features.md
+1,full metadata unscaled,random_forest,0.9801,0.9862,0.0061,0.0041,0.0209,significant_but_small,findings/2026-08-28_run1_unscaled_features.md
+1,full metadata unscaled,svm,0.9415,0.9415,0.0000,-0.0010,1.0,no_improvement,findings/2026-08-28_run1_unscaled_features.md
+2,full metadata scaled,logistic_regression,0.9062,0.9549,0.0487,,2.32e-15,significant_improvement,findings/2026-08-28_run2_scaled_features.md
+2,full metadata scaled,random_forest,0.9838,0.9866,0.0028,,0.263,improvement_not_significant,findings/2026-08-28_run2_scaled_features.md
+2,full metadata scaled,svm,0.9544,0.9755,0.0211,,6.35e-06,significant_but_small,findings/2026-08-28_run2_scaled_features.md
+3,metadata-constrained scaled + 3 new features,logistic_regression,0.9094,0.8630,-0.0465,0.0866,2.58e-04,no_improvement (F1 drop; ROC-AUC improved),findings/2026-08-28_run3_metadata_constrained.md
+3,metadata-constrained scaled + 3 new features,random_forest,0.7781,0.9571,0.1791,0.2030,1.98e-60,significant_improvement,findings/2026-08-28_run3_metadata_constrained.md
+3,metadata-constrained scaled + 3 new features,svm,0.9113,0.9406,0.0293,0.1654,1.87e-06,significant_but_small,findings/2026-08-28_run3_metadata_constrained.md
